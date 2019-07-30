@@ -432,17 +432,6 @@ function l3args.argparse(targets, options, arguments)
                 end
               end
 
---              -- set value accordingly
---              if key ~= 'remainder' then
---                if c then
---                  keys[key] = c(v)
---                else
---                  keys[key] = v
---                end
---              else
---                l3args.insert(keys[key], v)
---              end
-
 --            -- there is no key, so we are
 --            -- in the remainder branch
             else
