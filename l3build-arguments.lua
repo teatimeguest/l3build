@@ -404,31 +404,51 @@ function l3args.argparse(targets, options, arguments)
                 -- check if the current key reference
                 -- accepts a corresponding value
                 if x['long'] == key then
-                  if not (x['argument'] and not keys[key] ) then
+
+                  if not x['argument'] then
                     key = 'remainder'
+                  else
+
+                    if keys[key] then
+                      key = 'remainder'
+
+                      if not l3args.exists(issues['unknown'], '-' .. key) then
+                        l3args.insert(issues['unknown'], '-' .. key)
+                      end
+
+                      if x['handler'] then
+                        l3args.insert(issues['remainder'], x['handler'](v))
+                      else
+                        l3args.insert(issues['remainder'], v)
+                      end
+                    end
                   end
-                  c = x['handler']
+
                   break
                 end
-              end
 
-              -- set value accordingly
-              if key ~= 'remainder' then
-                if c then
-                  keys[key] = c(v)
-                else
-                  keys[key] = v
+                if key == 'remainder' then
+                  l3args.insert(keys['remainder'], v)
                 end
-              else
-                l3args.insert(keys[key], v)
               end
 
-            -- there is no key, so we are
-            -- in the remainder branch
+--              -- set value accordingly
+--              if key ~= 'remainder' then
+--                if c then
+--                  keys[key] = c(v)
+--                else
+--                  keys[key] = v
+--                end
+--              else
+--                l3args.insert(keys[key], v)
+--              end
+
+--            -- there is no key, so we are
+--            -- in the remainder branch
             else
 
               -- insert the value into the table
-              l3args.insert(keys[key], v)
+              l3args.insert(keys['remainder'], v)
             end
           end
         end
@@ -484,8 +504,8 @@ end
 function l3args.getOptions()
   return {
     {
-      short       = "c",
       long        = "config",
+      short       = "c",
       description = "Sets the config(s) used for running tests",
       handler     = l3args.split,
       argument    = true
@@ -516,8 +536,8 @@ function l3args.getOptions()
       argument    = true
     },
     {
-      short       = "e",
       long        = "engine",
+      short       = "e",
       description = "Sets the engine(s) to use for running test",
       handler     = l3args.split,
       argument    = true
@@ -596,6 +616,11 @@ function l3args.getOptions()
       long        = "texmfhome",
       description = "Location of user texmf tree",
       argument    = true
+    },
+    {
+      long        = "version",
+      short       = "v",
+      argument    = false
     }
   }
 end
