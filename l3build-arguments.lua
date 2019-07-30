@@ -22,280 +22,582 @@ for those people who are interested.
 
 --]]
 
-local exit             = os.exit
-local stderr           = io.stderr
+--- Provides handling and parsing of command line arguments.
+-- This module is self-contained has no other dependencies.
+-- @author The LaTeX3 team
+-- @license LaTeX Project Public License (LPPL 1.3c)
+-- @copyright 2019 The LaTeX3 Project
+-- @release 1.0
 
-local find             = string.find
-local gmatch           = string.gmatch
-local match            = string.match
-local sub              = string.sub
+-- the LaTeX3 namespace
+local l3args = {}
 
-local insert           = table.insert
+-- populate the namespace with global functions
 
--- Parse command line options
+-- table iterators
+l3args.ipairs = ipairs
+l3args.pairs  = pairs
 
-option_list =
-  {
-    config =
-      {
-        desc  = "Sets the config(s) used for running tests",
-        short = "c",
-        type  = "table"
-      },
-    date =
-      {
-        desc  = "Sets the date to insert into sources",
-        type  = "string"
-      },
-    debug =
-      {
-        desc = "Runs target in debug mode (not supported by all targets)",
-        type = "boolean"
-      },
-    dirty =
-      {
-        desc = "Skip cleaning up the test area",
-        type = "boolean"
-      },
-    ["dry-run"] =
-      {
-        desc = "Dry run for install",
-        type = "boolean"
-      },
-    email =
-      {
-        desc = "Email address of CTAN uploader",
-        type = "string"
-      },
-    engine =
-      {
-        desc  = "Sets the engine(s) to use for running test",
-        short = "e",
-        type  = "table"
-      },
-    epoch =
-      {
-        desc  = "Sets the epoch for tests and typesetting",
-        type  = "string"
-      },
-    file =
-      {
-        desc  = "Take the upload announcement from the given file",
-        short = "F",
-        type  = "string"
-      },
-    first =
-      {
-        desc  = "Name of first test to run",
-        type  = "string"
-      },
-    force =
-      {
-        desc  = "Force tests to run if engine is not set up",
-        short = "f",
-        type  = "boolean"
-      },
-    full =
-      {
-        desc = "Install all files",
-        type = "boolean"
-      },
-    ["halt-on-error"] =
-      {
-        desc  = "Stops running tests after the first failure",
-        short = "H",
-        type  = "boolean"
-      },
-    help =
-      {
-        short = "h",
-        type  = "boolean"
-      },
-    last =
-      {
-        desc  = "Name of last test to run",
-        type  = "string"
-      },
-    message =
-      {
-        desc  = "Text for upload announcement message",
-        short = "m",
-        type  = "string"
-      },
-    quiet =
-      {
-        desc  = "Suppresses TeX output when unpacking",
-        short = "q",
-        type  = "boolean"
-      },
-    rerun =
-      {
-        desc  = "Skip setup: simply rerun tests",
-        type  = "boolean"
-      },
-    ["show-log-on-error"] =
-      {
-        desc  = "If 'halt-on-error' stops, show the full log of the failure",
-        type  = "boolean"
-      },
-    shuffle =
-      {
-        desc  = "Shuffle order of tests",
-        type  = "boolean"
-      },
-    texmfhome =
-      {
-        desc = "Location of user texmf tree",
-        type = "string"
-      }
+-- table operations
+l3args.insert = table.insert
+l3args.remove = table.remove
+
+-- string operations
+l3args.find   = string.find
+l3args.length = string.len
+l3args.sub    = string.sub
+l3args.gsub   = string.gsub
+
+--l3.exit   = os.exit
+--l3.stderr = io.stderr
+--l3.gmatch = string.gmatch
+--l3.match  = string.match
+
+--- Checks whether the provided value exists as a table element.
+-- This function searches and compares the provided value against
+-- every element in the table. If a match is found, the value
+-- therefore exists and the search ends. Otherwise, after scanning
+-- the entire table with no match, the function returns `false` as result.
+-- @param a Table of elements.
+-- @param hit Value to be searched.
+-- @return Boolean value whether the table contains the provided value
+-- as an element.
+function l3args.exists(a, hit)
+  for _, v in l3args.ipairs(a) do
+    if v == hit then
+      return true
+    end
+  end
+  return false
+end
+
+--- Parses the argument table based on a table of targets and options.
+-- This function parses the argument table obtained from the command line
+-- invocation and extracts options and potential corresponding values
+-- based on rules set forth in a table of targets and options. As a result,
+-- two tables are returned (one containing the correct elements and the
+-- other holding potential issues found).
+-- @param targets Table of targets which dictate the tool behaviour, given
+-- the remaining set of command line arguments.
+-- @param options Table of options which dictate the parsing operation.
+-- @param arguments Argument table obtained from the command line.
+-- @return Table holding option keys and potential corresponding values.
+-- @return Table holding potential issues found during the parsing
+-- operation. These issues are grouped into five categories, presented
+-- as follows:
+--
+-- - `unknown`: This table holds unknown options, either in their long or short
+-- forms. An unknown option is any element preceed by `-` and `--` and not
+-- explicitly described in the `options` table. The table has no duplicate values.
+-- - `duplicate`: This table holds duplicate options, i.e, options that were
+-- previously found during the argument processing, either in their long or
+-- short forms. Whenever possible, options are always normalized to their
+-- long forms. The table has no duplicate values.
+-- - `invalid`: This table holds invalid options, either in their long or short
+-- forms. An invalid option, in this case, is a boolean switch which was
+-- inadvertently specified with a value, using the `=` separator. The table has
+-- no duplicate values.
+-- - `remainder`: This table, as the name implies, holds remainder values obtained
+-- from duplicate and invalid options (see previous descriptions). The table
+-- might have duplicate values, as they are simply inserted into the structure.
+-- - `target`: This boolean switch holds the reference to an invalid target, i.e,
+-- when the first positional argument does not correspond to an element in the
+-- list of valid targets. Initially, this switch is set to `false` (invalid).
+function l3args.argparse(targets, options, arguments)
+
+  local keys, key, issues = {}, 'remainder', {}
+  local a, b, c
+
+  -- inner table
+  keys['remainder'] = {}
+
+  -- inner tables
+  issues[ 'unknown' ] = {}
+  issues['duplicate'] = {}
+  issues[ 'invalid' ] = {}
+  issues['remainder'] = {}
+
+  -- boolean switch for an invalid
+  -- target, initially set to true
+  issues['target'] = true
+
+  -- handle the positional target
+  if #arguments > 0 then
+    local target = l3args.remove(arguments, 1)
+    if l3args.exists(targets, target) then
+      keys['target'] = target
+      issues['target'] = false
+    end
+  end
+
+  for _, v in l3args.ipairs(arguments) do
+
+    -- look for a short option (no separator)
+    a, _, b = l3args.find(v, '^%-(%w+)$')
+
+    -- we got a hit
+    if a then
+      for _, x in l3args.ipairs(options) do
+
+        -- get the key reference
+        key = 'remainder'
+        if x['short'] == b then
+          key = x['long']
+
+          -- check if the key was
+          -- already defined
+          if not keys[key] then
+
+            -- check if this is a
+            -- boolean switch
+            if not x['argument'] then
+              keys[key] = true
+            end
+
+          -- we got a duplicate
+          else
+            if not l3args.exists(issues['duplicate'], '--' .. key) then
+              l3args.insert(issues['duplicate'], '--' .. key)
+            end
+          end
+          break
+        end
+      end
+
+      -- key is unknown, log it
+      if key == 'remainder' then
+
+        for i = 1, l3args.length(b) do
+          a = l3args.sub(b, i, i)
+
+          for _, x in l3args.ipairs(options) do
+
+            key = 'remainder'
+            if x['short'] == a then
+              key = x['long']
+
+              -- check if the key was
+              -- already defined
+              if not keys[key] then
+
+                -- check if this is a
+                -- boolean switch
+                if not x['argument'] then
+                  keys[key] = true
+
+                -- it is not a boolean switch,
+                -- so report as an invalid flag
+                else
+                  if not l3args.exists(issues['invalid'], '--' .. key) then
+                    l3args.insert(issues['invalid'], '--' .. key)
+                  end
+                end
+
+              -- the key already exists,
+              -- report as a duplicate
+              else
+                if not l3args.exists(issues['duplicate'], '--' .. key) then
+                  l3args.insert(issues['duplicate'], '--' .. key)
+                end
+              end
+
+              break
+            end
+          end
+
+          -- key is unknown, log it
+          if key == 'remainder' then
+            if not l3args.exists(issues['unknown'], '-' .. a) then
+              l3args.insert(issues['unknown'], '-' .. a)
+            end
+          end
+        end
+      end
+
+    -- no short option, move
+    -- on to the next branch
+    else
+
+      -- look for a long option (no separator)
+      a, _, b = l3args.find(v, '^%-%-([%w-]+)$')
+
+      -- we got a hit
+      if a then
+        for _, x in l3args.ipairs(options) do
+
+          -- get the key reference
+          key = 'remainder'
+          if x['long'] == b then
+            key = b
+
+            -- check if the key was
+            -- already defined
+            if not keys[key] then
+
+              -- check if this is a
+              -- boolean switch
+              if not x['argument'] then
+                keys[key] = true
+              end
+
+            -- we got a duplicate
+            else
+              if not l3args.exists(issues['duplicate'], '--' .. key) then
+                l3args.insert(issues['duplicate'], '--' .. key)
+              end
+            end
+            break
+          end
+        end
+
+        -- key is unknown, log it
+        if key == 'remainder' then
+          if not l3args.exists(issues['unknown'], '--' .. b) then
+            l3args.insert(issues['unknown'], '--' .. b)
+          end
+        end
+
+      -- no long option, move
+      -- on to the next branch
+      else
+
+        -- look for a long option
+        -- (with the '=' separator)
+        a, _, b, c = l3args.find(v, '^%-%-([%w-]+)=(.+)$')
+
+        -- there is a hit
+        if a then
+          for _, x in l3args.ipairs(options) do
+
+            -- get the key reference
+            key = 'remainder'
+            if x['long'] == b then
+              key = b
+
+              -- check if the key is not
+              -- a boolean switch
+              if x['argument'] then
+
+                -- check if the key was
+                -- already defined
+                if not keys[key] then
+                  if x['handler'] then
+                    keys[key] = x['handler'](c)
+                  else
+                    keys[key] = c
+                  end
+
+                -- we got a duplicate, so the value
+                -- goes to the remainder, as the
+                -- other counterparts
+                else
+
+                  -- log the duplicate key
+                  if not l3args.exists(issues['duplicate'], '--' .. key) then
+                    l3args.insert(issues['duplicate'], '--' .. key)
+                  end
+
+                  -- the value is thrown to the remainder
+                  l3args.insert(issues['remainder'], c)
+                end
+
+              -- the option is actually a boolean
+              -- switch, so report the invalid key
+              else
+                if not l3args.exists(issues['invalid'], '--' .. key) then
+                  l3args.insert(issues['invalid'], '--' .. key)
+                end
+
+                -- the value is thrown to the remainder
+                l3args.insert(issues['remainder'], c)
+              end
+
+              break
+            end
+          end
+
+          -- key is unknown, log it
+          if key == 'remainder' then
+            if not l3args.exists(issues['unknown'], '--' .. b) then
+              l3args.insert(issues['unknown'], '--' .. b)
+            end
+
+            -- the value is thrown to the remainder
+            l3args.insert(issues['remainder'], c)
+          end
+
+        -- no long option with separator,
+        -- so move on to the next branch
+        else
+
+          -- look for a short option
+          -- (with the '=' separator)
+          a, _, b, c = l3args.find(v, '^%-([%w-]+)=(.+)$')
+
+          -- there is a hit
+          if a then
+            for _, x in l3args.ipairs(options) do
+
+              -- get the key reference
+              key = 'remainder'
+              if x['short'] == b then
+                key = x['long']
+
+                -- check if this is not
+                -- a boolean switch
+                if x['argument'] then
+
+                  -- check if the key was
+                  -- already defined
+                  if not keys[key] then
+                    if x['handler'] then
+                      keys[key] = x['handler'](c)
+                    else
+                      keys[key] = c
+                    end
+
+                  -- we got a duplicate, so the value
+                  -- goes to the remainder, as the
+                  -- other counterparts
+                  else
+                    if not l3args.exists(issues['duplicate'], '--' .. key) then
+                      l3args.insert(issues['duplicate'], '--' .. key)
+                    end
+
+                    -- the value is thrown to the remainder
+                    l3args.insert(issues['remainder'], c)
+                  end
+
+                -- the option is actually a boolean
+                -- switch, so report the invalid key
+                else
+                  if not l3args.exists(issues['invalid'], '--' .. key) then
+                    l3args.insert(issues['invalid'], '--' .. key)
+                  end
+
+                  -- the value is thrown to the remainder
+                  l3args.insert(issues['remainder'], c)
+                end
+
+                break
+              end
+            end
+
+            -- key is unknown, log it
+            if key == 'remainder' then
+              if not l3args.exists(issues['unknown'], '-' .. b) then
+                l3args.insert(issues['unknown'], '-' .. b)
+              end
+
+              -- the value is thrown to the remainder
+              l3args.insert(issues['remainder'], c)
+            end
+
+          -- no short option with separator,
+          -- so move to the next branch
+          else
+
+            -- we have a valid key
+            if key ~= 'remainder' then
+              for _, x in l3args.ipairs(options) do
+
+                -- check if the current key reference
+                -- accepts a corresponding value
+                if x['long'] == key then
+                  if not (x['argument'] and not keys[key] ) then
+                    key = 'remainder'
+                  end
+                  c = x['handler']
+                  break
+                end
+              end
+
+              -- set value accordingly
+              if key ~= 'remainder' then
+                if c then
+                  keys[key] = c(v)
+                else
+                  keys[key] = v
+                end
+              else
+                l3args.insert(keys[key], v)
+              end
+
+            -- there is no key, so we are
+            -- in the remainder branch
+            else
+
+              -- insert the value into the table
+              l3args.insert(keys[key], v)
+            end
+          end
+        end
+      end
+    end
+  end
+
+  -- return the key/value table and
+  -- the potential issues
+  return keys, issues
+end
+
+--- Splits the provided string at every comma.
+-- This function splits the provided string at every comma,
+-- adding each part to a table of elements.
+-- @param a The string to be splitted at every comma.
+-- @return A table contaninig every part of the splitted
+-- text, in extraction order.
+function l3args.split(a)
+   local sep, fields = ',', {}
+   local pattern = string.format("([^%s]+)", sep)
+   l3args.gsub(a, pattern,
+    function(c)
+      fields[#fields + 1] = c
+    end)
+   return fields
+end
+
+--- Fetches all command line options `l3build` has, as a table.
+-- This function simply returns all command line options
+-- `l3build` has, as a table, to be used later on by certain
+-- helper methods. The elements of such table follow a certain
+-- structure.
+-- @return A table containing all command line options. Each
+-- element is a table on itself and has the following structure:
+--
+-- - `short`: optional, it denotes the option in its short form. Please
+-- mind that at least one of the forms must be present, so the
+-- corresponding instance can be detected at runtime.
+-- - `long`: optional, it denotes the option in its long form. Please
+-- mind that at least one of the forms must be present, so the
+-- corresponding instance can be detected at runtime.
+-- - `description`: as the name implies, this entry holds the option
+-- description, to be displayed in the help menu. This entry is
+-- optional. If absent, the corresponding option will not be
+-- displayed in the help menu.
+-- `- handler`: optional, it denotes the handler in which the option
+-- value will be transformed. This feature will only be in effect
+-- when the corresponding `argument` entry is set to `true`.
+-- - `argument`: mandatory, it denotes whether the option will take
+-- an associated value. When set to `false`, the option will
+-- automatically act as a boolean switch.
+function l3args.getOptions()
+  return {
+    {
+      short       = "c",
+      long        = "config",
+      description = "Sets the config(s) used for running tests",
+      handler     = l3args.split,
+      argument    = true
+    },
+    {
+      long        = "date",
+      description = "Sets the date to insert into sources",
+      argument    = true
+    },
+    {
+      long        = "debug",
+      description = "Runs target in debug mode (not supported by all targets)",
+      argument    = false
+    },
+    {
+      long        = "dirty",
+      description = "Skip cleaning up the test area",
+      argument    = false
+    },
+    {
+      long        = "dry-run",
+      description = "Dry run for install",
+      argument    = false
+    },
+    {
+      long        = "email",
+      description = "Email address of CTAN uploader",
+      argument    = true
+    },
+    {
+      short       = "e",
+      long        = "engine",
+      description = "Sets the engine(s) to use for running test",
+      handler     = l3args.split,
+      argument    = true
+    },
+    {
+      long        = "epoch",
+      description = "Sets the epoch for tests and typesetting",
+      argument    = true
+    },
+    {
+      long        = "file",
+      short       = "F",
+      description = "Take the upload announcement from the given file",
+      argument    = true
+    },
+    {
+      long        = "first",
+      description = "Name of first test to run",
+      argument    = true
+    },
+    {
+      long        = "force",
+      short       = "f",
+      description = "Force tests to run if engine is not set up",
+      argument    = false
+    },
+    {
+      long        = "full",
+      description = "Install all files",
+      argument    = false
+    },
+    {
+      long        = "halt-on-error",
+      short       = "H",
+      description = "Stops running tests after the first failure",
+      argument    = false
+    },
+    {
+      long        = "help",
+      short       = "h",
+      argument    = false
+    },
+    {
+      long        = "last",
+      description = "Name of last test to run",
+      argument    = true
+    },
+    {
+      long        = "message",
+      short       = "m",
+      description = "Text for upload announcement message",
+      argument    = true
+    },
+    {
+      long        = "quiet",
+      short       = "q",
+      description = "Suppresses TeX output when unpacking",
+      argument    = false
+    },
+    {
+      long        = "rerun",
+      description = "Skip setup: simply rerun tests",
+      argument    = false
+    },
+    {
+      long        = "show-log-on-error",
+      description = "If 'halt-on-error' stops, show the full log of the failure",
+      argument    = false
+    },
+    {
+      long        = "shuffle",
+      description = "Shuffle order of tests",
+      argument    = false
+    },
+    {
+      long        = "texmfhome",
+      description = "Location of user texmf tree",
+      argument    = true
+    }
   }
-
--- This is done as a function (rather than do ... end) as it allows early
--- termination (break)
-local function argparse()
-  local result = { }
-  local names  = { }
-  local long_options =  { }
-  local short_options = { }
-  -- Turn long/short options into two lookup tables
-  for k,v in pairs(option_list) do
-    if v["short"] then
-      short_options[v["short"]] = k
-    end
-    long_options[k] = k
-  end
-  local args = args
-  -- arg[1] is a special case: must be a command or "-h"/"--help"
-  -- Deal with this by assuming help and storing only apparently-valid
-  -- input
-  local a = arg[1]
-  result["target"] = "help"
-  if a then
-    -- No options are allowed in position 1, so filter those out
-    if a == "--version" then
-      result["target"] = "version"
-    elseif not match(a, "^%-") then
-      result["target"] = a
-    end
-  end
-  -- Stop here if help or version is required
-  if result["target"] == "help" or result["target"] == "version" then
-    return result
-  end
-  -- An auxiliary to grab all file names into a table
-  local function remainder(num)
-    local names = { }
-    for i = num, #arg do
-      insert(names, arg[i])
-    end
-    return names
-  end
-  -- Examine all other arguments
-  -- Use a while loop rather than for as this makes it easier
-  -- to grab arg for optionals where appropriate
-  local i = 2
-  while i <= #arg do
-    local a = arg[i]
-    -- Terminate search for options
-    if a == "--" then
-      names = remainder(i + 1)
-      break
-    end
-    -- Look for optionals
-    local opt
-    local optarg
-    local opts
-    -- Look for and option and get it into a variable
-    if match(a, "^%-") then
-      if match(a, "^%-%-") then
-        opts = long_options
-        local pos = find(a, "=", 1, true)
-        if pos then
-          opt    = sub(a, 3, pos - 1)
-          optarg = sub(a, pos + 1)
-        else
-          opt = sub(a, 3)
-        end
-      else
-        opts = short_options
-        opt  = sub(a, 2, 2)
-        -- Only set optarg if it is there
-        if #a > 2 then
-          optarg = sub(a, 3)
-        end
-      end
-      -- Now check that the option is valid and sort out the argument
-      -- if required
-      local optname = opts[opt]
-      if optname then
-        -- Tidy up arguments
-        if option_list[optname]["type"] == "boolean" then
-          if optarg then
-            local opt = "-" .. (match(a, "^%-%-") and "-" or "") .. opt
-            stderr:write("Value not allowed for option " .. opt .."\n")
-            return {"help"}
-          end
-        else
-         if not optarg then
-          optarg = arg[i + 1]
-          if not optarg then
-            stderr:write("Missing value for option " .. a .."\n")
-            return {"help"}
-          end
-          i = i + 1
-         end
-        end
-      else
-        stderr:write("Unknown option " .. a .."\n")
-        return {"help"}
-      end
-      -- Store the result
-      if optarg then
-        if option_list[optname]["type"] == "string" then
-          result[optname] = optarg
-        else
-          local opts = result[optname] or { }
-          for hit in gmatch(optarg, "([^,%s]+)") do
-            insert(opts, hit)
-          end
-          result[optname] = opts
-        end
-      else
-        result[optname] = true
-      end
-      i = i + 1
-    end
-    if not opt then
-      names = remainder(i)
-      break
-    end
-  end
-  if next(names) then
-   result["names"] = names
-  end
-  return result
 end
 
-options = argparse()
-
--- Sanity check
-function check_engines()
-  if options["engine"] and not options["force"] then
-     -- Make a lookup table
-     local t = { }
-    for _, engine in pairs(checkengines) do
-      t[engine] = true
-    end
-    for _, engine in pairs(options["engine"]) do
-      if not t[engine] then
-        print("\n! Error: Engine \"" .. engine .. "\" not set up for testing!")
-        print("\n  Valid values are:")
-        for _, engine in ipairs(checkengines) do
-          print("  - " .. engine)
-        end
-        print("")
-        exit(1)
-      end
-    end
-  end
-end
+return l3args
