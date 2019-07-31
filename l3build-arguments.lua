@@ -32,26 +32,22 @@ for those people who are interested.
 -- the LaTeX3 namespace
 local l3args = {}
 
--- populate the namespace with global functions
+-- helper table
+local utils = {}
 
 -- table iterators
-l3args.ipairs = ipairs
-l3args.pairs  = pairs
+utils.ipairs = ipairs
+utils.pairs  = pairs
 
 -- table operations
-l3args.insert = table.insert
-l3args.remove = table.remove
+utils.insert = table.insert
+utils.remove = table.remove
 
 -- string operations
-l3args.find   = string.find
-l3args.length = string.len
-l3args.sub    = string.sub
-l3args.gsub   = string.gsub
-
---l3.exit   = os.exit
---l3.stderr = io.stderr
---l3.gmatch = string.gmatch
---l3.match  = string.match
+utils.find   = string.find
+utils.length = string.len
+utils.sub    = string.sub
+utils.gsub   = string.gsub
 
 --- Checks whether the provided value exists as a table element.
 -- This function searches and compares the provided value against
@@ -63,7 +59,7 @@ l3args.gsub   = string.gsub
 -- @return Boolean value whether the table contains the provided value
 -- as an element.
 function l3args.exists(a, hit)
-  for _, v in l3args.ipairs(a) do
+  for _, v in utils.ipairs(a) do
     if v == hit then
       return true
     end
@@ -106,7 +102,7 @@ end
 function l3args.argparse(targets, options, arguments)
 
   local keys, key, issues = {}, 'remainder', {}
-  local a, b, c
+  local switch, a, b, c = false
 
   -- inner table
   keys['remainder'] = {}
@@ -123,21 +119,21 @@ function l3args.argparse(targets, options, arguments)
 
   -- handle the positional target
   if #arguments > 0 then
-    local target = l3args.remove(arguments, 1)
+    local target = utils.remove(arguments, 1)
     if l3args.exists(targets, target) then
       keys['target'] = target
       issues['target'] = false
     end
   end
 
-  for _, v in l3args.ipairs(arguments) do
+  for _, v in utils.ipairs(arguments) do
 
     -- look for a short option (no separator)
-    a, _, b = l3args.find(v, '^%-(%w+)$')
+    a, _, b = utils.find(v, '^%-(%w+)$')
 
     -- we got a hit
     if a then
-      for _, x in l3args.ipairs(options) do
+      for _, x in utils.ipairs(options) do
 
         -- get the key reference
         key = 'remainder'
@@ -157,7 +153,7 @@ function l3args.argparse(targets, options, arguments)
           -- we got a duplicate
           else
             if not l3args.exists(issues['duplicate'], '--' .. key) then
-              l3args.insert(issues['duplicate'], '--' .. key)
+              utils.insert(issues['duplicate'], '--' .. key)
             end
           end
           break
@@ -167,10 +163,10 @@ function l3args.argparse(targets, options, arguments)
       -- key is unknown, log it
       if key == 'remainder' then
 
-        for i = 1, l3args.length(b) do
-          a = l3args.sub(b, i, i)
+        for i = 1, utils.length(b) do
+          a = utils.sub(b, i, i)
 
-          for _, x in l3args.ipairs(options) do
+          for _, x in utils.ipairs(options) do
 
             key = 'remainder'
             if x['short'] == a then
@@ -189,7 +185,7 @@ function l3args.argparse(targets, options, arguments)
                 -- so report as an invalid flag
                 else
                   if not l3args.exists(issues['invalid'], '--' .. key) then
-                    l3args.insert(issues['invalid'], '--' .. key)
+                    utils.insert(issues['invalid'], '--' .. key)
                   end
                 end
 
@@ -197,7 +193,7 @@ function l3args.argparse(targets, options, arguments)
               -- report as a duplicate
               else
                 if not l3args.exists(issues['duplicate'], '--' .. key) then
-                  l3args.insert(issues['duplicate'], '--' .. key)
+                  utils.insert(issues['duplicate'], '--' .. key)
                 end
               end
 
@@ -208,7 +204,7 @@ function l3args.argparse(targets, options, arguments)
           -- key is unknown, log it
           if key == 'remainder' then
             if not l3args.exists(issues['unknown'], '-' .. a) then
-              l3args.insert(issues['unknown'], '-' .. a)
+              utils.insert(issues['unknown'], '-' .. a)
             end
           end
         end
@@ -219,11 +215,11 @@ function l3args.argparse(targets, options, arguments)
     else
 
       -- look for a long option (no separator)
-      a, _, b = l3args.find(v, '^%-%-([%w-]+)$')
+      a, _, b = utils.find(v, '^%-%-([%w-]+)$')
 
       -- we got a hit
       if a then
-        for _, x in l3args.ipairs(options) do
+        for _, x in utils.ipairs(options) do
 
           -- get the key reference
           key = 'remainder'
@@ -243,7 +239,7 @@ function l3args.argparse(targets, options, arguments)
             -- we got a duplicate
             else
               if not l3args.exists(issues['duplicate'], '--' .. key) then
-                l3args.insert(issues['duplicate'], '--' .. key)
+                utils.insert(issues['duplicate'], '--' .. key)
               end
             end
             break
@@ -253,7 +249,7 @@ function l3args.argparse(targets, options, arguments)
         -- key is unknown, log it
         if key == 'remainder' then
           if not l3args.exists(issues['unknown'], '--' .. b) then
-            l3args.insert(issues['unknown'], '--' .. b)
+            utils.insert(issues['unknown'], '--' .. b)
           end
         end
 
@@ -263,11 +259,11 @@ function l3args.argparse(targets, options, arguments)
 
         -- look for a long option
         -- (with the '=' separator)
-        a, _, b, c = l3args.find(v, '^%-%-([%w-]+)=(.+)$')
+        a, _, b, c = utils.find(v, '^%-%-([%w-]+)=(.+)$')
 
         -- there is a hit
         if a then
-          for _, x in l3args.ipairs(options) do
+          for _, x in utils.ipairs(options) do
 
             -- get the key reference
             key = 'remainder'
@@ -294,22 +290,22 @@ function l3args.argparse(targets, options, arguments)
 
                   -- log the duplicate key
                   if not l3args.exists(issues['duplicate'], '--' .. key) then
-                    l3args.insert(issues['duplicate'], '--' .. key)
+                    utils.insert(issues['duplicate'], '--' .. key)
                   end
 
                   -- the value is thrown to the remainder
-                  l3args.insert(issues['remainder'], c)
+                  utils.insert(issues['remainder'], c)
                 end
 
               -- the option is actually a boolean
               -- switch, so report the invalid key
               else
                 if not l3args.exists(issues['invalid'], '--' .. key) then
-                  l3args.insert(issues['invalid'], '--' .. key)
+                  utils.insert(issues['invalid'], '--' .. key)
                 end
 
                 -- the value is thrown to the remainder
-                l3args.insert(issues['remainder'], c)
+                utils.insert(issues['remainder'], c)
               end
 
               break
@@ -319,11 +315,11 @@ function l3args.argparse(targets, options, arguments)
           -- key is unknown, log it
           if key == 'remainder' then
             if not l3args.exists(issues['unknown'], '--' .. b) then
-              l3args.insert(issues['unknown'], '--' .. b)
+              utils.insert(issues['unknown'], '--' .. b)
             end
 
             -- the value is thrown to the remainder
-            l3args.insert(issues['remainder'], c)
+            utils.insert(issues['remainder'], c)
           end
 
         -- no long option with separator,
@@ -332,11 +328,11 @@ function l3args.argparse(targets, options, arguments)
 
           -- look for a short option
           -- (with the '=' separator)
-          a, _, b, c = l3args.find(v, '^%-([%w-]+)=(.+)$')
+          a, _, b, c = utils.find(v, '^%-([%w-]+)=(.+)$')
 
           -- there is a hit
           if a then
-            for _, x in l3args.ipairs(options) do
+            for _, x in utils.ipairs(options) do
 
               -- get the key reference
               key = 'remainder'
@@ -361,22 +357,22 @@ function l3args.argparse(targets, options, arguments)
                   -- other counterparts
                   else
                     if not l3args.exists(issues['duplicate'], '--' .. key) then
-                      l3args.insert(issues['duplicate'], '--' .. key)
+                      utils.insert(issues['duplicate'], '--' .. key)
                     end
 
                     -- the value is thrown to the remainder
-                    l3args.insert(issues['remainder'], c)
+                    utils.insert(issues['remainder'], c)
                   end
 
                 -- the option is actually a boolean
                 -- switch, so report the invalid key
                 else
                   if not l3args.exists(issues['invalid'], '--' .. key) then
-                    l3args.insert(issues['invalid'], '--' .. key)
+                    utils.insert(issues['invalid'], '--' .. key)
                   end
 
                   -- the value is thrown to the remainder
-                  l3args.insert(issues['remainder'], c)
+                  utils.insert(issues['remainder'], c)
                 end
 
                 break
@@ -386,11 +382,11 @@ function l3args.argparse(targets, options, arguments)
             -- key is unknown, log it
             if key == 'remainder' then
               if not l3args.exists(issues['unknown'], '-' .. b) then
-                l3args.insert(issues['unknown'], '-' .. b)
+                utils.insert(issues['unknown'], '-' .. b)
               end
 
               -- the value is thrown to the remainder
-              l3args.insert(issues['remainder'], c)
+              utils.insert(issues['remainder'], c)
             end
 
           -- no short option with separator,
@@ -399,45 +395,42 @@ function l3args.argparse(targets, options, arguments)
 
             -- we have a valid key
             if key ~= 'remainder' then
-              for _, x in l3args.ipairs(options) do
+              for _, x in utils.ipairs(options) do
 
                 -- check if the current key reference
                 -- accepts a corresponding value
                 if x['long'] == key then
-
-                  if not x['argument'] then
+                  if not (x['argument'] and not keys[key] ) then
                     key = 'remainder'
-                  else
-
-                    if keys[key] then
-                      key = 'remainder'
-
-                      if not l3args.exists(issues['unknown'], '-' .. key) then
-                        l3args.insert(issues['unknown'], '-' .. key)
-                      end
-
-                      if x['handler'] then
-                        l3args.insert(issues['remainder'], x['handler'](v))
-                      else
-                        l3args.insert(issues['remainder'], v)
-                      end
-                    end
+                    switch = true
                   end
-
+                  c = x['handler']
                   break
-                end
-
-                if key == 'remainder' then
-                  l3args.insert(keys['remainder'], v)
                 end
               end
 
---            -- there is no key, so we are
---            -- in the remainder branch
+              -- set value accordingly
+              if key ~= 'remainder' then
+                if c then
+                  keys[key] = c(v)
+                else
+                  keys[key] = v
+                end
+              else
+                if switch then
+                  utils.insert(issues['remainder'], v)
+                  switch = false
+                else
+                  utils.insert(keys['remainder'], v)
+                end
+              end
+
+            -- there is no key, so we are
+            -- in the remainder branch
             else
 
               -- insert the value into the table
-              l3args.insert(keys['remainder'], v)
+              utils.insert(keys[key], v)
             end
           end
         end
@@ -459,7 +452,7 @@ end
 function l3args.split(a)
    local sep, fields = ',', {}
    local pattern = string.format("([^%s]+)", sep)
-   l3args.gsub(a, pattern,
+   utils.gsub(a, pattern,
     function(c)
       fields[#fields + 1] = c
     end)
@@ -493,8 +486,8 @@ end
 function l3args.getOptions()
   return {
     {
-      long        = "config",
       short       = "c",
+      long        = "config",
       description = "Sets the config(s) used for running tests",
       handler     = l3args.split,
       argument    = true
@@ -525,8 +518,8 @@ function l3args.getOptions()
       argument    = true
     },
     {
-      long        = "engine",
       short       = "e",
+      long        = "engine",
       description = "Sets the engine(s) to use for running test",
       handler     = l3args.split,
       argument    = true
