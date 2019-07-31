@@ -117,15 +117,6 @@ function l3args.argparse(targets, options, arguments)
   -- target, initially set to true
   issues['target'] = true
 
-  -- handle the positional target
-  if #arguments > 0 then
-    local target = utils.remove(arguments, 1)
-    if l3args.exists(targets, target) then
-      keys['target'] = target
-      issues['target'] = false
-    end
-  end
-
   for _, v in utils.ipairs(arguments) do
 
     -- look for a short option (no separator)
@@ -435,6 +426,25 @@ function l3args.argparse(targets, options, arguments)
           end
         end
       end
+    end
+  end
+
+  -- potential target extraction, check
+  -- whether the remainder is not empty
+  if #keys['remainder'] > 0 then
+
+    -- verify if the first element in the
+    -- remainder tablle is a valid target
+    if l3args.exists(targets, keys['remainder'][1]) then
+
+      -- the first element is a valid key,
+      -- so remove it from the remainder
+      -- table and update the target key
+      keys['target'] = utils.remove(keys['remainder'], 1)
+
+      -- there is no issue regarding
+      -- an unknown target, so update
+      issues['target'] = false
     end
   end
 
