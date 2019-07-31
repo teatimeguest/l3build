@@ -49,16 +49,16 @@ utils.length = string.len
 utils.sub    = string.sub
 utils.gsub   = string.gsub
 
---- Checks whether the provided value exists as a table element.
+--- Checks whether the provided value is available as a table element.
 -- This function searches and compares the provided value against
 -- every element in the table. If a match is found, the value
--- therefore exists and the search ends. Otherwise, after scanning
+-- therefore is available and the search ends. Otherwise, after scanning
 -- the entire table with no match, the function returns `false` as result.
 -- @param a Table of elements.
 -- @param hit Value to be searched.
 -- @return Boolean value whether the table contains the provided value
 -- as an element.
-function l3args.exists(a, hit)
+function l3args.contains(a, hit)
   for _, v in utils.ipairs(a) do
     if v == hit then
       return true
@@ -143,7 +143,7 @@ function l3args.argparse(targets, options, arguments)
 
           -- we got a duplicate
           else
-            if not l3args.exists(issues['duplicate'], '--' .. key) then
+            if not l3args.contains(issues['duplicate'], '--' .. key) then
               utils.insert(issues['duplicate'], '--' .. key)
             end
           end
@@ -175,7 +175,7 @@ function l3args.argparse(targets, options, arguments)
                 -- it is not a boolean switch,
                 -- so report as an invalid flag
                 else
-                  if not l3args.exists(issues['invalid'], '--' .. key) then
+                  if not l3args.contains(issues['invalid'], '--' .. key) then
                     utils.insert(issues['invalid'], '--' .. key)
                   end
                 end
@@ -183,7 +183,7 @@ function l3args.argparse(targets, options, arguments)
               -- the key already exists,
               -- report as a duplicate
               else
-                if not l3args.exists(issues['duplicate'], '--' .. key) then
+                if not l3args.contains(issues['duplicate'], '--' .. key) then
                   utils.insert(issues['duplicate'], '--' .. key)
                 end
               end
@@ -194,7 +194,7 @@ function l3args.argparse(targets, options, arguments)
 
           -- key is unknown, log it
           if key == 'remainder' then
-            if not l3args.exists(issues['unknown'], '-' .. a) then
+            if not l3args.contains(issues['unknown'], '-' .. a) then
               utils.insert(issues['unknown'], '-' .. a)
             end
           end
@@ -229,7 +229,7 @@ function l3args.argparse(targets, options, arguments)
 
             -- we got a duplicate
             else
-              if not l3args.exists(issues['duplicate'], '--' .. key) then
+              if not l3args.contains(issues['duplicate'], '--' .. key) then
                 utils.insert(issues['duplicate'], '--' .. key)
               end
             end
@@ -239,7 +239,7 @@ function l3args.argparse(targets, options, arguments)
 
         -- key is unknown, log it
         if key == 'remainder' then
-          if not l3args.exists(issues['unknown'], '--' .. b) then
+          if not l3args.contains(issues['unknown'], '--' .. b) then
             utils.insert(issues['unknown'], '--' .. b)
           end
         end
@@ -280,7 +280,7 @@ function l3args.argparse(targets, options, arguments)
                 else
 
                   -- log the duplicate key
-                  if not l3args.exists(issues['duplicate'], '--' .. key) then
+                  if not l3args.contains(issues['duplicate'], '--' .. key) then
                     utils.insert(issues['duplicate'], '--' .. key)
                   end
 
@@ -291,7 +291,7 @@ function l3args.argparse(targets, options, arguments)
               -- the option is actually a boolean
               -- switch, so report the invalid key
               else
-                if not l3args.exists(issues['invalid'], '--' .. key) then
+                if not l3args.contains(issues['invalid'], '--' .. key) then
                   utils.insert(issues['invalid'], '--' .. key)
                 end
 
@@ -305,7 +305,7 @@ function l3args.argparse(targets, options, arguments)
 
           -- key is unknown, log it
           if key == 'remainder' then
-            if not l3args.exists(issues['unknown'], '--' .. b) then
+            if not l3args.contains(issues['unknown'], '--' .. b) then
               utils.insert(issues['unknown'], '--' .. b)
             end
 
@@ -347,7 +347,7 @@ function l3args.argparse(targets, options, arguments)
                   -- goes to the remainder, as the
                   -- other counterparts
                   else
-                    if not l3args.exists(issues['duplicate'], '--' .. key) then
+                    if not l3args.contains(issues['duplicate'], '--' .. key) then
                       utils.insert(issues['duplicate'], '--' .. key)
                     end
 
@@ -358,7 +358,7 @@ function l3args.argparse(targets, options, arguments)
                 -- the option is actually a boolean
                 -- switch, so report the invalid key
                 else
-                  if not l3args.exists(issues['invalid'], '--' .. key) then
+                  if not l3args.contains(issues['invalid'], '--' .. key) then
                     utils.insert(issues['invalid'], '--' .. key)
                   end
 
@@ -372,7 +372,7 @@ function l3args.argparse(targets, options, arguments)
 
             -- key is unknown, log it
             if key == 'remainder' then
-              if not l3args.exists(issues['unknown'], '-' .. b) then
+              if not l3args.contains(issues['unknown'], '-' .. b) then
                 utils.insert(issues['unknown'], '-' .. b)
               end
 
@@ -435,7 +435,7 @@ function l3args.argparse(targets, options, arguments)
 
     -- verify if the first element in the
     -- remainder tablle is a valid target
-    if l3args.exists(targets, keys['remainder'][1]) then
+    if l3args.contains(targets, keys['remainder'][1]) then
 
       -- the first element is a valid key,
       -- so remove it from the remainder
