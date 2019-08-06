@@ -48,12 +48,12 @@ function testValidTarget()
 end
 
 function testInvalidTarget()
-  local a, b = l3args.argparse(targets, options, { 'chekc' })
+  local _, b = l3args.argparse(targets, options, { 'chekc' })
   lu.assertTrue(b['target'])
 end
 
 function testInvalidTarget()
-  local a, b = l3args.argparse(targets, options, { 'chekc' })
+  local _, b = l3args.argparse(targets, options, { 'chekc' })
   lu.assertTrue(b['target'])
 end
 
@@ -177,13 +177,13 @@ function testDuplicateShortParametricOptions()
 end
 
 function testInvalidOptions()
-  local a, b = l3args.argparse(targets, options, { 'check', '-v=2.1' })
+  local _, b = l3args.argparse(targets, options, { 'check', '-v=2.1' })
   lu.assertEquals(b['invalid'], { '--version' })
   lu.assertEquals(b['remainder'], { '2.1' })
 end
 
 function testUnknownOptions()
-  local a, b = l3args.argparse(targets, options, { 'check', '-abc=2.1' })
+  local _, b = l3args.argparse(targets, options, { 'check', '-abc=2.1' })
   lu.assertEquals(b['unknown'], { '-abc' })
   lu.assertEquals(b['remainder'], { '2.1' })
 end

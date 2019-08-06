@@ -40,6 +40,11 @@ utils.config = package.config
 utils.sub = string.sub
 utils.find = string.find
 utils.byte = string.byte
+utils.tostring = tostring
+utils.io = io
+
+l3text.stdout = {}
+l3text.stderr = {}
 
 --- Ensures the variable holds any value or falls back to a default value.
 -- This function ensures the variable holds any value or falls back to a
@@ -207,6 +212,46 @@ function l3text.wrap(text, width, shift, first)
   -- return the wrapped string, with the
   -- last check on indenting the first line
   return (first and pad(' ', shift) or '') .. wrapped
+end
+
+--- Prints the provided parameter in the standard output, with no linebreak.
+-- This function prints the provided parameter in the standard output,
+-- without adding a trailing linebreak. The parameter is properly converted
+-- to its string representation based on the underlying `tostring` function, as
+-- a typical `print` implementation does.
+-- @param The parameter to be printed in the standard output.
+function l3text.stdout.print(a)
+  utils.io.write(utils.tostring(a))
+end
+
+--- Prints the provided parameter in the standard output, with a linebreak.
+-- This function prints the provided parameter in the standard output,
+-- adding a trailing linebreak. The parameter is properly converted to its
+-- string representation based on the underlying `tostring` function, as a
+-- typical `print` implementation does.
+-- @param The parameter to be printed in the standard output.
+function l3text.stdout.println(a)
+  utils.io.write(utils.tostring(a) .. l3text.linebreak())
+end
+
+--- Prints the provided parameter in the standard error, with no linebreak.
+-- This function prints the provided parameter in the standard error,
+-- without adding a trailing linebreak. The parameter is properly converted
+-- to its string representation based on the underlying `tostring` function, as
+-- a typical `print` implementation does.
+-- @param The parameter to be printed in the standard error.
+function l3text.stderr.print(a)
+  utils.io.stderr:write(utils.tostring(a))
+end
+
+--- Prints the provided parameter in the standard error, with a linebreak.
+-- This function prints the provided parameter in the standard error,
+-- adding a trailing linebreak. The parameter is properly converted to its
+-- string representation based on the underlying `tostring` function, as a
+-- typical `print` implementation does.
+-- @param The parameter to be printed in the standard error.
+function l3text.stderr.println(a)
+  utils.io.stderr:write(utils.tostring(a) .. l3text.linebreak())
 end
 
 -- export module
