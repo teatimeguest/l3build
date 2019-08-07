@@ -43,6 +43,7 @@ utils.byte = string.byte
 utils.tostring = tostring
 utils.io = io
 
+-- the streams
 l3text.stdout = {}
 l3text.stderr = {}
 
@@ -90,7 +91,7 @@ local function colormap(key)
     white        = '97',
     reset        = '00'
   }
-  return (os.getenv('L3BUILD_COLORS') and '\027[00;' ..
+  return (ensure(os.getenv('L3BUILD_COLORS'), '0') == '1' and '\027[00;' ..
   ensure(colors[key], colors['reset']) .. 'm') or ''
 end
 
@@ -124,7 +125,7 @@ end
 -- @param c String to be replicated.
 -- @param w Integer denoting the number of times.
 -- @return Resulting string, based on the provided parameters.
-local function pad(c, w)
+function l3text.pad(c, w)
   local r = ''
   while #r < w do
     r = r .. c
@@ -203,7 +204,7 @@ function l3text.wrap(text, width, shift, first)
     if counter >= width then
       wrapped =  utils.sub(wrapped, 1, checkpoint) ..
             ((not closed and reset) or '') .. lb ..
-            pad(' ', shift) .. ((not closed and colour) or '') ..
+            l3text.pad(' ', shift) .. ((not closed and colour) or '') ..
             utils.sub(wrapped, checkpoint + 1)
       counter = 0
     end
@@ -211,7 +212,7 @@ function l3text.wrap(text, width, shift, first)
 
   -- return the wrapped string, with the
   -- last check on indenting the first line
-  return (first and pad(' ', shift) or '') .. wrapped
+  return (first and l3text.pad(' ', shift) or '') .. wrapped
 end
 
 --- Prints the provided parameter in the standard output, with no linebreak.
@@ -252,6 +253,22 @@ end
 -- @param The parameter to be printed in the standard error.
 function l3text.stderr.println(a)
   utils.io.stderr:write(utils.tostring(a) .. l3text.linebreak())
+end
+
+--- Draws the `l3build` logo, in ASCII art, in the terminal.
+-- This function, as the name implies, draws the `l3build` logo in
+-- the terminal, as an ASCII art, and applies a light blue colour
+-- when the proper color support is enabled.
+function l3text.drawLogo()
+  l3text.stdout.println(l3text.color('lightblue',
+      '   ______ __        _ __   __'))
+  l3text.stdout.println(l3text.color('lightblue',
+      '  / /_  // /  __ __(_) /__/ /'))
+  l3text.stdout.println(l3text.color('lightblue',
+      ' / //_ </ _ \\/ // / / / _  / '))
+  l3text.stdout.println(l3text.color('lightblue',
+      '/_/____/_.__/\\_,_/_/_/\\_,_/  '))
+  l3text.stdout.println('');
 end
 
 -- export module
