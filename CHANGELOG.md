@@ -7,6 +7,22 @@ this project uses date-based 'snapshot' version identifiers.
 
 ## [Unreleased]
 
+### Added
+
+- Additional notes on `texmfdir`
+
+## [2019-09-29]
+
+### Fixed
+
+- Path searching if `texmfdir` is set but does not exist
+
+## [2019-09-28]
+
+### Fixed
+
+- Typesetting when using an isolated system (use of texmfdir)
+
 ## [2019-09-25]
 
 ### Added
@@ -337,7 +353,9 @@ this project uses date-based 'snapshot' version identifiers.
 - Rationalise short option names: removed `-d`, `-E`, `-r`
 - Target `cmdcheck`: specific to LaTeX3 kernel work
 
-[Unreleased]: https://github.com/latex3/l3build/compare/2019-09-25...HEAD
+[Unreleased]: https://github.com/latex3/l3build/compare/2019-09-29...HEAD
+[2019-09-29]: https://github.com/latex3/l3build/compare/2019-09-28...2019-09-29
+[2019-09-28]: https://github.com/latex3/l3build/compare/2019-09-25...2019-09-28
 [2019-09-25]: https://github.com/latex3/l3build/compare/2019-09-18...2019-09-25
 [2019-09-18]: https://github.com/latex3/l3build/compare/2019-09-14...2019-09-18
 [2019-09-14]: https://github.com/latex3/l3build/compare/2019-08-24...2019-09-14
