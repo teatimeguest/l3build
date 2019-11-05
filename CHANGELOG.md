@@ -9,8 +9,25 @@ this project uses date-based 'snapshot' version identifiers.
 
 ### Changed
 
+- `\ASSERTSTR` no longer needs e-TeX
+
+## [2019-11-01]
+
+### Added
+
+- New `\ASSERT` and `\ASSERTSTR` functions (issue #102)
+
+### Changed
+
 - Avoid normalisation of (u)pTeX data when this is standard engine
   (fixes #103)
+- Normalise Lua data references (#107)
+- Extend `runtest_task()` to pass run number
+- Allow `regression-test` to load when e-TeX is unavailable (fixes #105)
+
+### Fixed
+
+- Location of `testsuppdir` when multiple configurations are used
 
 ## [2019-10-02]
 
@@ -375,7 +392,8 @@ this project uses date-based 'snapshot' version identifiers.
 - Rationalise short option names: removed `-d`, `-E`, `-r`
 - Target `cmdcheck`: specific to LaTeX3 kernel work
 
-[Unreleased]: https://github.com/latex3/l3build/compare/2019-10-02...HEAD
+[Unreleased]: https://github.com/latex3/l3build/compare/2019-11-01...HEAD
+[2019-11-01]: https://github.com/latex3/l3build/compare/2019-10-02...2019-11-01
 [2019-10-02]: https://github.com/latex3/l3build/compare/2019-09-30...2019-10-02
 [2019-09-30]: https://github.com/latex3/l3build/compare/2019-09-29...2019-09-30
 [2019-09-29]: https://github.com/latex3/l3build/compare/2019-09-28...2019-09-29

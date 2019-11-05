@@ -251,6 +251,9 @@ local function normalize_log(content,engine,errlevels)
     line = gsub(line, "save cache:", "load cache:")
     -- A tidy-up to keep LuaTeX and other engines in sync
     line = gsub(line, utf8_char(127), "^^?")
+    -- Remove lua data reference ids
+    line = gsub(line, "<lua data reference [0-9]+>",
+                      "<lua data reference ...>")
     -- Unicode engines display chars in the upper half of the 8-bit range:
     -- tidy up to match pdfTeX if an ASCII engine is in use
     if next(asciiengines) then
@@ -751,7 +754,7 @@ function runtest(name, engine, hide, ext, pdfmode, breakout)
         .. setup(lvtfile)
         .. (hide and (" > " .. os_null) or "")
         .. os_concat ..
-      runtest_tasks(jobname(lvtfile))
+      runtest_tasks(jobname(lvtfile),i)
     )
     -- Break the loop if the result is stable
     if breakout and i < checkruns then
@@ -798,7 +801,7 @@ function runtest(name, engine, hide, ext, pdfmode, breakout)
 end
 
 -- A hook to allow additional tasks to run for the tests
-runtest_tasks = runtest_tasks or function(name)
+runtest_tasks = runtest_tasks or function(name,run)
   return ""
 end
 

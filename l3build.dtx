@@ -231,7 +231,7 @@
 %    }^^A
 % }
 %
-% \date{Released 2019-10-02}
+% \date{Released 2019-11-01}
 %
 % \maketitle
 % \tableofcontents
@@ -845,6 +845,9 @@
 %     \texttt{\cs{\meta{type}}\meta{...}}
 %   \item Conversion of box numbers in |\show| lines
 %     \texttt{>~\cs{box}\meta{number}=} to \texttt{>~\cs{box}...=}
+%   \item Conversion of Lua data reference ids
+%     \texttt{<lua data reference \meta{number}>} to
+%     \texttt{<lua data reference ...>}
 %   \item Removal of some (u)p\TeX{} data where it is equivalent to
 %     \pdfTeX{} (|yoko direction|, |\displace 0.0|)
 % \end{itemize}
@@ -893,16 +896,6 @@
 %
 % Any commands that write content to the |.log| file that should be ignored can be surrounded by |\OMIT| \dots\ |\TIMO|.
 % At the appropriate location in the document where the |.log| comparisons should start (say, after |\begin{document}|), the test suite must contain the |\START| macro.
-% The test should then include \cs{AUTHOR}\marg{authors details} in case a test file fails in the future and needs to be re-analysed.
-%
-% Some additional diagnostic information can then be included as metadata for the conditions of the test.
-% The desired format can be indicated with \cs{FORMAT}\marg{format name}, and any packages or classes loaded can be indicated with
-%
-% \noindent\hspace*{2\parindent} \cs{CLASS}\oarg{options}\marg{class name, version}\par
-% \noindent\hspace*{2\parindent} \cs{PACKAGE}\oarg{options}\marg{package name, version}
-%
-% \noindent These do not provide information that is useful for automated checking; after all, packages change their version numbers frequently.
-% Rather, including this information in a test indicates the conditions under which the test was definitely known to pass at a certain time in the past.
 %
 % The |\END| command signals the end of the test (but read on).
 % Some additional diagnostic information is printed at this time to debug if the test did not complete `properly' in terms of mismatched brace groups or \cs{if}\dots\cs{fi} groups.
@@ -912,9 +905,6 @@
 % (See the \var{checkruns} variable for how these tests would be test up.)
 %
 % \subsection{Commands to help write tests}
-%
-% A simple command \cs{CHECKCOMMAND}\cs{\meta{macro}} is provided to check whether a particular \cs{\meta{macro}} is defined, undefined, or equivalent to \cs{relax}.
-% This is useful to flag either that internal macros are remaining local to their definitions, or that defined commands definitely are defined, or even as a reminder that commands you intend to define in a future package need to be tested once they appear.
 %
 % \cs{TYPE} is used to write material to the \texttt{.log} file, like \LaTeX's \cs{typeout}, but it allows `long' input.
 % The following commands are defined to use \cs{TYPE} to output strings to the \texttt{.log} file.
@@ -936,6 +926,13 @@
 % \item
 % \cs{BEGINTEST}\marg{title} \dots \cs{ENDTEST} is an environment form of
 % \cs{TEST}, allowing verbatim material, \emph{etc.} to appear.
+% \item
+% \cs{SHOWFILE} (\eTeX{} only) Shows the content of the file given as an
+% argument.
+% \item
+% \cs{ASSERT} and \cs{ASSERTSTR} Asserts if the full expansion
+% of the two required arguments are the same: the \cs{ASSERT} function is
+% token-based, the \cs{ASSERTSTR} works on a string basis.
 % \end{itemize}
 % An example of some of these commands is shown following.
 % \begin{Verbatim}
@@ -1105,19 +1102,23 @@
 % or more engines, but will not carry out any additional processing. For
 % some tests, for example bibliography generation, it may be desirable to
 % call one or more tools in addition to the engine. This can be arranged
-% by defining |runtest_tasks|, a function taking one argument, the name
+% by defining |runtest_tasks|, a function taking two arguments, the name
 % of the current test (this is equivalent to \TeX{}'s \cs{jobname},
-% \emph{i.e.}~it lacks an extension). The function |runtest_tasks|
-% is is into a call to the system to run the engine. As such, it
-% should take return a string with the appropriate command(s)
-% and option(s). If more than one task is required, these should be separated
+% \emph{i.e.}~it lacks an extension) and the current run number.
+% The function |runtest_tasks| is run after the main call to the
+% engine for a test cycle. It should return an errorlevel value.
+% If more than one task is required, these should be separated
 % by use of |os_concat|, a string variable defined by \pkg{l3build} as the
 % correct concatenation marker for the system. An example of |runtest_tasks|
 % suitable for calling Biber is shown in Listing~\ref{fig:test-tasks}.
 % \begin{figure}
 %   \begin{lstlisting}[frame=single,language={[5.2]Lua},gobble = 6]
-%     function runtest_tasks(name)
-%       return "biber " .. name
+%     function runtest_tasks(name,run)
+%       if run == 1 then
+%         return "biber " .. name
+%       else
+%         return 0
+%       end
 %     end
 %   \end{lstlisting}
 %   \caption{Example \texttt{runtest_tasks} function.}
@@ -2028,12 +2029,11 @@
 %
 % \subsection{Preliminaries}
 %
-% We require \eTeX{}.
+% We require \eTeX{} for some features.
 %    \begin{macrocode}
 \begingroup\expandafter\expandafter\expandafter\endgroup
 \expandafter\ifx\csname eTeXversion\endcsname\relax
-  \errmessage{e-TeX is required to use regression-test.tex}%
-  \expandafter\endinput
+  \message{e-TeX is required by some regression-test.tex features}%
 \fi
 %    \end{macrocode}
 %
@@ -2058,7 +2058,11 @@
 % Put \TeX{} into scroll mode, and stop it showing the
 % implementation details of macros in error messages.
 %    \begin{macrocode}
-\ifnum\interactionmode>1 \scrollmode\fi
+\begingroup\expandafter\expandafter\expandafter\endgroup
+\expandafter\ifx\csname interactionmode\endcsname\relax
+\else
+  \ifnum\interactionmode>1 \scrollmode\fi
+\fi
 \errorcontextlines=-1 %
 %    \end{macrocode}
 %
@@ -2140,6 +2144,13 @@
   \LONGTYPEOUT{^^JEND-TEST-LOG^^J}%
   \@@@end
 }
+\begingroup\expandafter\expandafter\expandafter\endgroup
+\expandafter\ifx\csname currentgrouplevel\endcsname\relax
+  \def\END{%
+    \LONGTYPEOUT{^^JEND-TEST-LOG^^J}%
+    \@@@end
+  }
+\fi
 \ifx\@@end\@undefined
   \let\end\END
 \else
@@ -2157,8 +2168,6 @@
 %    \end{macrocode}
 % \end{macro}
 %
-%
-
 %  \begin{macro}{\SHOWFILE}
 %     Load a file (e.g.,| \jobname.toc|) into the .log file with the usual special
 %     characters rendered harmless. Use as |\SHOWFILE{\jobname.aux}|.
@@ -2180,6 +2189,10 @@
      \typeout{-------- #1 (end) -----------}%
 }%
 \endgroup
+\begingroup\expandafter\expandafter\expandafter\endgroup
+\expandafter\ifx\csname everyeof\endcsname\relax
+  \def\SHOWFILE#1{\TYPE{FEATURE UNAVAILABLE}}
+\fi
 %    \end{macrocode}
 %  \end{macro}
 %
@@ -2224,7 +2237,9 @@
 %     \FALSE,
 %     \YES,
 %     \NO,
-%     \NEWLINE
+%     \NEWLINE,
+%     \ASSERT,
+%     \ASSERTSTR
 %   }
 %   We are not starved for space in the log file output, so let's make it as
 %   verbose as is useful when reading the |.diff|'s.
@@ -2234,7 +2249,7 @@
     ============================================================%
   }%
 }
-\protected\long\def\BEGINTEST#1{%
+\csname protected\endcsname\long\def\BEGINTEST#1{%
   \global\advance\gTESTint by 1 %
   \SEPARATOR
   \LONGTYPEOUT{TEST \the\gTESTint: \detokenize{#1}}%
@@ -2242,7 +2257,21 @@
   \begingroup
     \let\TYPE\LONGTYPEOUT
 }
-\protected\long\def\ENDTEST{%
+\begingroup\expandafter\expandafter\expandafter\endgroup
+\expandafter\ifx\csname detokenize\endcsname\relax
+  \long\def\BEGINTEST#1{%
+    \global\advance\gTESTint by 1 %
+    \SEPARATOR
+    \begingroup
+      \toks0={#1}%
+      \LONGTYPEOUT{TEST \the\gTESTint: \the\toks0 }%
+    \endgroup
+    \SEPARATOR
+    \begingroup
+      \let\TYPE\LONGTYPEOUT
+  }
+\fi
+\csname protected\endcsname\long\def\ENDTEST{%
   \endgroup
   \SEPARATOR
   \LONGTYPEOUT{}%
@@ -2262,10 +2291,73 @@
 \def \YES   {\TYPE{YES}}
 \def \NO    {\TYPE{NO}}
 \def \NEWLINE {\TYPE{^^J}}
+\csname protected\endcsname\long\def\ASSERT#1#2{%
+  \begingroup
+    \edef\@tempa{#1}%
+    \edef\@tempb{#2}%
+    \ifx\@tempa\@tempb
+      \TYPE{PASSED}%
+    \else
+      \TYPE{FAILED}%
+    \fi
+  \endgroup
+}
+\csname protected\endcsname\long\def\ASSERTSTR#1#2{%
+  \begingroup
+    \edef\@tempa{#1}%
+    \edef\@tempb{#2}%
+    \edef\@tempa{\meaning\@tempa}%
+    \edef\@tempb{\meaning\@tempb}%
+    \ifx\@tempa\@tempb
+      \TYPE{PASSED}%
+    \else
+      \TYPE{FAILED}%
+    \fi
+  \endgroup
+}
+\begingroup\expandafter\expandafter\expandafter\endgroup
+\expandafter\ifx\csname detokenize\endcsname\relax
+  \long\def\ASSERTSTR#1#2{%
+    \TYPE{FEATURE UNAVAILABLE}%
+  }
+\fi
 %    \end{macrocode}
 % \end{macro}
 %
 % \subsection{Suppressing variable data in output}
+%
+% Disable compression in PDF output.
+%    \begin{macrocode}
+\ifnum 0%
+  \ifx\pdfoutput\@undefined\else\ifnum\pdfoutput>0 1\fi\fi
+  \ifx\outputmode\@undefined\else\ifnum\outputmode>0 1\fi\fi
+  >0 %
+  \ifx\pdfvariable\@undefined
+    \pdfcompresslevel=0 %
+    \pdfobjcompresslevel=0 %
+  \else
+    \pdfvariable compresslevel=0 %
+    \pdfvariable objcompresslevel=0 %
+  \fi
+\else
+  \ifnum 0%
+  \ifx\XeTeXversion\@undefined\else 1\fi
+  \ifx\kanjiskip\@undefined\else 1\fi
+  >0 %
+    \special{dvipdfmx:config z 0}% Compress level
+    \special{dvipdfmx:config C 0x40}% Object compression
+  \fi
+\fi
+%    \end{macrocode}
+%
+%    \begin{macrocode}
+\begingroup\expandafter\expandafter\expandafter\endgroup
+\expandafter\ifx\csname protected\endcsname\relax
+  \reset@catcodes
+  \let\protected\undefined
+  \expandafter\endinput
+\fi
+%    \end{macrocode}
 %
 % Load the map file early so it does not appear in the log.
 %    \begin{macrocode}
@@ -2331,30 +2423,6 @@
           /Producer       (\ifx\XeTeXversion\@undefined\else x\fi dvipdfmx)
         >>
     }
-  \fi
-\fi
-%    \end{macrocode}
-%
-% Disable compression in PDF output.
-%    \begin{macrocode}
-\ifnum 0%
-  \ifx\pdfoutput\@undefined\else\ifnum\pdfoutput>0 1\fi\fi
-  \ifx\outputmode\@undefined\else\ifnum\outputmode>0 1\fi\fi
-  >0 %
-  \ifx\pdfvariable\@undefined
-    \pdfcompresslevel=0 %
-    \pdfobjcompresslevel=0 %
-  \else
-    \pdfvariable compresslevel=0 %
-    \pdfvariable objcompresslevel=0 %
-  \fi
-\else
-  \ifnum 0%
-  \ifx\XeTeXversion\@undefined\else 1\fi
-  \ifx\kanjiskip\@undefined\else 1\fi
-  >0 %
-    \special{dvipdfmx:config z 0}% Compress level
-    \special{dvipdfmx:config C 0x40}% Object compression
   \fi
 \fi
 %    \end{macrocode}
