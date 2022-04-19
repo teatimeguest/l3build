@@ -376,7 +376,7 @@ function remove_duplicates(a)
 end
 
 function mkdir(dir)
-  dir = normlaize_and_escape(dir)
+  dir = normalize_and_escape(dir)
   if os_type == "windows" then
     -- Windows (with the extensions) will automatically make directory trees
     -- but issues a warning if the dir already exists: avoid by including a test
