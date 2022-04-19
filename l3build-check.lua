@@ -81,7 +81,7 @@ function checkinit()
   for _,i in ipairs(checksuppfiles) do
     cp(i, supportdir, testdir)
   end
-  execute(os_ascii .. ">" .. testdir .. "/ascii.tcx")
+  execute(os_ascii .. ">" .. normalize_and_escape(testdir .. "/ascii.tcx"))
   return checkinit_hook()
 end
 
@@ -678,7 +678,8 @@ function base_compare(test_type,name,engine,cleanup)
     return compare(difffile, reffile, genfile, cleanup, name, engine)
   end
   local errorlevel = execute(os_diffexe .. " "
-    .. normalize_path(reffile .. " " .. genfile .. " > " .. difffile))
+    .. normalize_and_escape(reffile) .. " " .. normalize_and_escape(genfile)
+    .. " > " .. normalize_and_escape(difffile))
   if errorlevel == 0 or cleanup then
     remove(difffile)
   end
@@ -701,15 +702,19 @@ function compare_tlg(difffile, tlgfile, logfile, cleanup, name, engine)
     local luatlgfile = testdir .. "/" .. testname .. tlgext
     rewrite(tlgfile,luatlgfile,normalize_lua_log)
     rewrite(logfile,lualogfile,normalize_lua_log,true)
-    errorlevel = execute(os_diffexe .. " "
-      .. normalize_path(luatlgfile .. " " .. lualogfile .. " > " .. difffile))
+    errorlevel = execute(os_diffexe
+      .. " " .. normalize_and_escape(luatlgfile)
+      .. " " .. normalize_and_escape(lualogfile)
+      .. " > " .. normalize_and_escape(difffile))
     if cleanup then
       remove(lualogfile)
       remove(luatlgfile)
     end
   else
-    errorlevel = execute(os_diffexe .. " "
-      .. normalize_path(tlgfile .. " " .. logfile .. " > " .. difffile))
+    errorlevel = execute(os_diffexe
+      .. " " .. normalize_and_escape(tlgfile)
+      .. " " .. normalize_and_escape(logfile)
+      .. " > " .. normalize_and_escape(difffile))
   end
   if errorlevel == 0 or cleanup then
     remove(difffile)
