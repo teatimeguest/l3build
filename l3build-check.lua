@@ -741,7 +741,7 @@ function runtest(name, engine, hide, ext, test_type, breakout)
       binary    = engine_info.binary  or binary
       format    = engine_info.format  or format
       checkopts = engine_info.options or checkopts
-      tokens    = engine_info.tokens and (' "' .. engine_info.tokens .. '" ')
+      tokens    = engine_info.tokens and (' ' .. escape_arg(engine_info.tokens))
                     or tokens
     end
   end
@@ -758,10 +758,10 @@ function runtest(name, engine, hide, ext, test_type, breakout)
     return " -jobname=" .. name .. tokens .. ' "\\input ' .. file .. '" '
   end
   if match(checkformat,"^context$") then
-    function setup(file) return tokens .. ' "' .. file .. '" '  end
+    function setup(file) return tokens .. ' ' .. escape_arg(file) .. ' '  end
   end
   if match(binary,"make4ht") then
-    function setup(file) return tokens .. ' "' .. file .. '" '  end
+    function setup(file) return tokens .. ' "' .. escape_arg(file) .. '" '  end
     format = ""
     checkopts = ""
   end
@@ -783,14 +783,15 @@ function runtest(name, engine, hide, ext, test_type, breakout)
   rmfile(testdir,name .. logext)
   local errlevels = {}
   for i = 1, checkruns do
+    -- FIXME
     errlevels[i] = run(
       testdir,
       -- No use of localdir here as the files get copied to testdir:
       -- avoids any paths in the logs
-      os_setenv .. " TEXINPUTS=." .. localtexmf()
+      os_setenv .. " TEXINPUTS=." .. escape_arg(localtexmf())
         .. (checksearch and os_pathsep or "")
         .. os_concat ..
-      os_setenv .. " LUAINPUTS=." .. localtexmf()
+      os_setenv .. " LUAINPUTS=." .. escape_arg(localtexmf())
         .. (checksearch and os_pathsep or "")
         .. os_concat ..
       -- Avoid spurious output from (u)pTeX

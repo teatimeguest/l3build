@@ -183,7 +183,7 @@ function abspath(path)
 end
 
 -- TODO: Fix the cross platform problem
-function escapepath(path)
+function escape_arg(path)
   if os_type == "windows" then
     local path,count = gsub(path,'"','')
     if count % 2 ~= 0 then
@@ -203,7 +203,7 @@ function escapepath(path)
 end
 
 function normalize_and_escape(path)
-  return escapepath(normalize_path(path))
+  return escape_arg(normalize_path(path))
 end
 
 -- For cleaning out a directory, which also ensures that it exists
